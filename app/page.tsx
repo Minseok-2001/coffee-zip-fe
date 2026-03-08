@@ -1,65 +1,94 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { apiFetch } from '@/lib/api'
+
+interface Recipe {
+  id: number
+  title: string
+  coffeeBean: string | null
+  origin: string | null
+  waterTemp: number | null
+  coffeeGrams: number | null
+  waterGrams: number | null
+  likeCount: number
+  tags: string[]
+}
+
+interface FeedResponse {
+  items: Recipe[]
+  nextCursor: number | null
+}
+
+export default function FeedPage() {
+  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [cursor, setCursor] = useState<number | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [loading, setLoading] = useState(false)
+
+  async function loadMore() {
+    setLoading(true)
+    try {
+      const url = cursor ? `/recipes?cursor=${cursor}&limit=10` : '/recipes?limit=10'
+      const data = await apiFetch<FeedResponse>(url)
+      setRecipes(prev => [...prev, ...data.items])
+      setCursor(data.nextCursor)
+      setHasMore(data.nextCursor !== null)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadMore() }, [])
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold text-amber-900">레시피 피드</h1>
+      {recipes.map(recipe => (
+        <Link key={recipe.id} href={`/recipes/${recipe.id}`}>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start mb-1">
+              <h2 className="font-semibold text-amber-900">{recipe.title}</h2>
+              <span className="text-sm text-amber-500">❤️ {recipe.likeCount}</span>
+            </div>
+            {recipe.coffeeBean && (
+              <p className="text-sm text-amber-700">
+                {recipe.coffeeBean}{recipe.origin && ` · ${recipe.origin}`}
+              </p>
+            )}
+            <div className="flex gap-3 text-xs text-amber-600 mt-1">
+              {recipe.waterTemp && <span>🌡️ {recipe.waterTemp}°C</span>}
+              {recipe.coffeeGrams && recipe.waterGrams && (
+                <span>⚖️ {recipe.coffeeGrams}g : {recipe.waterGrams}g</span>
+              )}
+            </div>
+            {recipe.tags.length > 0 && (
+              <div className="flex gap-1 mt-2 flex-wrap">
+                {recipe.tags.map(tag => (
+                  <span key={tag} className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </Link>
+      ))}
+      {hasMore && (
+        <button
+          onClick={loadMore}
+          disabled={loading}
+          className="w-full py-3 rounded-xl bg-amber-100 text-amber-800 font-medium hover:bg-amber-200 disabled:opacity-50 transition-colors"
+        >
+          {loading ? '불러오는 중...' : '더 보기'}
+        </button>
+      )}
+      {!loading && !hasMore && recipes.length === 0 && (
+        <p className="text-center text-amber-400 py-12">아직 레시피가 없어요 ☕</p>
+      )}
     </div>
-  );
+  )
 }
