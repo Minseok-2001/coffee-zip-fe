@@ -24,137 +24,170 @@ interface Recipe {
 
 type TimerState = 'idle' | 'running' | 'paused' | 'done'
 
-// SVG circular timer constants
-const RADIUS = 54
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+// SVG layout constants (viewBox 0 0 200 295)
+const SVG_W = 200
+const SVG_H = 295
+const SERVER_X = 48
+const SERVER_Y = 122
+const SERVER_W = 104
+const SERVER_H = 163
 
 export default function TimerPage() {
   const { id } = useParams()
   const router = useRouter()
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
-  const [remaining, setRemaining] = useState(0)
-  const [state, setState] = useState<TimerState>('idle')
-  const startedAtRef = useRef<string | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [timerState, setTimerState] = useState<TimerState>('idle')
+  const [displaySeconds, setDisplaySeconds] = useState(0)
 
-  // GSAP water fill
-  const waterFillRef = useRef<SVGRectElement>(null)
-  const waveRef = useRef<SVGPathElement>(null)
-  const gsapAnimRef = useRef<gsap.core.Timeline | null>(null)
+  // Direct DOM refs for 60fps animation (no React re-render)
+  const coffeeRectRef = useRef<SVGRectElement>(null)
+  const waveGroupRef = useRef<SVGGElement>(null)
+  const dripperGlowRef = useRef<SVGEllipseElement>(null)
+  const dropsGroupRef = useRef<SVGGElement>(null)
+
+  // Timer state refs
+  const startedAtRef = useRef<string | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const pausedAtRef = useRef<number>(0)
+  const virtualStartRef = useRef<number>(0)
+  const stepDurationMsRef = useRef<number>(0)
+  const stepIndexRef = useRef<number>(0)
+  const recipeRef = useRef<Recipe | null>(null)
+  const lastSecsRef = useRef<number>(0)
+  const timerStateRef = useRef<TimerState>('idle')
 
   useEffect(() => {
     apiFetch<Recipe>(`/recipes/${id}`).then(r => {
       setRecipe(r)
-      if (r.steps.length > 0) setRemaining(r.steps[0].duration)
+      recipeRef.current = r
+      if (r.steps.length > 0) setDisplaySeconds(r.steps[0].duration)
     })
   }, [id])
 
-  // GSAP water animation
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    import('gsap').then(({ gsap }) => {
-      if (!waterFillRef.current || !waveRef.current) return
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }, [])
 
-      // Kill previous
-      gsapAnimRef.current?.kill()
-
-      const tl = gsap.timeline()
-      gsapAnimRef.current = tl
-
-      if (state === 'running') {
-        const currentStep = recipe?.steps[stepIndex]
-        if (!currentStep) return
-
-        // Calculate current progress
-        const totalDuration = currentStep.duration
-        const elapsed = totalDuration - remaining
-        const progress = elapsed / totalDuration
-
-        // Animate fill from current to 100% in remaining seconds
-        tl.to(waterFillRef.current, {
-          attr: { y: `${100 - (progress * 100)}%`, height: `${progress * 100}%` },
-          duration: 0,
-        })
-        tl.to(waterFillRef.current, {
-          attr: { y: '0%', height: '100%' },
-          duration: remaining,
-          ease: 'none',
-        })
-
-        // Continuous wave animation
-        gsap.to(waveRef.current, {
-          attr: {
-            d: 'M0,8 Q15,0 30,8 Q45,16 60,8 Q75,0 90,8 Q105,16 120,8 L120,20 L0,20 Z',
-          },
-          duration: 1.2,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-        })
-      } else if (state === 'paused') {
-        tl.pause()
-      } else if (state === 'idle') {
-        // Reset water
-        gsap.set(waterFillRef.current, { attr: { y: '100%', height: '0%' } })
-      }
-    })
-  }, [state, stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const goNextStep = useCallback(() => {
-    if (!recipe) return
-    const nextIndex = stepIndex + 1
-    if (nextIndex >= recipe.steps.length) {
-      setState('done')
-      saveTimerLog()
-    } else {
-      setStepIndex(nextIndex)
-      setRemaining(recipe.steps[nextIndex].duration)
-      setState('running')
+  // Direct DOM update — called at 60fps from RAF
+  const updateDOM = useCallback((p: number) => {
+    const clampedP = Math.max(0, Math.min(p, 1))
+    // Rising coffee level
+    if (coffeeRectRef.current) {
+      const h = clampedP * SERVER_H
+      const y = SERVER_Y + SERVER_H - h
+      coffeeRectRef.current.setAttribute('y', String(y))
+      coffeeRectRef.current.setAttribute('height', String(h))
     }
-  }, [recipe, stepIndex]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (state !== 'running') return
-    intervalRef.current = setInterval(() => {
-      setRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!)
-          goNextStep()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(intervalRef.current!)
-  }, [state, stepIndex, goNextStep])
-
-  function start() {
-    startedAtRef.current = new Date().toISOString()
-    setState('running')
-  }
-
-  function togglePause() {
-    setState(s => s === 'running' ? 'paused' : 'running')
-    if (state === 'running') {
-      gsapAnimRef.current?.pause()
-    } else {
-      gsapAnimRef.current?.resume()
+    // Wave surface position
+    if (waveGroupRef.current) {
+      const coffeeSurface = SERVER_Y + SERVER_H * (1 - clampedP)
+      waveGroupRef.current.setAttribute('transform', `translate(${SERVER_X}, ${coffeeSurface - 6})`)
     }
-  }
+    // Dripper glow intensity
+    if (dripperGlowRef.current) {
+      dripperGlowRef.current.setAttribute('opacity', clampedP > 0 ? '0.35' : '0')
+    }
+  }, [])
 
-  async function saveTimerLog() {
+  const saveTimerLog = useCallback(async () => {
+    const r = recipeRef.current
+    if (!r) return
     try {
       await apiFetch('/timer/log', {
         method: 'POST',
         body: JSON.stringify({
-          recipeId: recipe!.id,
-          recipeName: recipe!.title,
+          recipeId: r.id,
+          recipeName: r.title,
           startedAt: startedAtRef.current,
           completedAt: new Date().toISOString(),
         }),
       })
     } catch (e) { console.error(e) }
+  }, [])
+
+  const runTick = useCallback((now: number) => {
+    const elapsed = now - virtualStartRef.current
+    const total = stepDurationMsRef.current
+    const p = Math.max(0, Math.min(elapsed / total, 1))
+
+    updateDOM(p)
+
+    const secs = Math.max(0, Math.ceil((total - elapsed) / 1000))
+    if (secs !== lastSecsRef.current) {
+      lastSecsRef.current = secs
+      setDisplaySeconds(secs)
+    }
+
+    if (p < 1) {
+      rafRef.current = requestAnimationFrame(runTick)
+      return
+    }
+
+    // Step complete
+    const r = recipeRef.current!
+    const next = stepIndexRef.current + 1
+    if (next >= r.steps.length) {
+      setTimerState('done')
+      timerStateRef.current = 'done'
+      saveTimerLog()
+    } else {
+      stepIndexRef.current = next
+      setStepIndex(next)
+      stepDurationMsRef.current = r.steps[next].duration * 1000
+      lastSecsRef.current = r.steps[next].duration
+      setDisplaySeconds(r.steps[next].duration)
+      virtualStartRef.current = now
+      updateDOM(0)
+      rafRef.current = requestAnimationFrame(runTick)
+    }
+  }, [updateDOM, saveTimerLog])
+
+  function start() {
+    if (!recipe) return
+    startedAtRef.current = new Date().toISOString()
+    stepIndexRef.current = 0
+    stepDurationMsRef.current = recipe.steps[0].duration * 1000
+    lastSecsRef.current = recipe.steps[0].duration
+    virtualStartRef.current = performance.now()
+    updateDOM(0)
+    setTimerState('running')
+    timerStateRef.current = 'running'
+    rafRef.current = requestAnimationFrame(runTick)
+  }
+
+  function pause() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    pausedAtRef.current = performance.now()
+    setTimerState('paused')
+    timerStateRef.current = 'paused'
+    if (dropsGroupRef.current) dropsGroupRef.current.style.display = 'none'
+  }
+
+  function resume() {
+    virtualStartRef.current += performance.now() - pausedAtRef.current
+    setTimerState('running')
+    timerStateRef.current = 'running'
+    if (dropsGroupRef.current) dropsGroupRef.current.style.display = ''
+    rafRef.current = requestAnimationFrame(runTick)
+  }
+
+  function skipStep() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    const r = recipeRef.current!
+    const next = stepIndexRef.current + 1
+    if (next >= r.steps.length) {
+      setTimerState('done')
+      saveTimerLog()
+    } else {
+      stepIndexRef.current = next
+      setStepIndex(next)
+      stepDurationMsRef.current = r.steps[next].duration * 1000
+      lastSecsRef.current = r.steps[next].duration
+      setDisplaySeconds(r.steps[next].duration)
+      virtualStartRef.current = performance.now()
+      updateDOM(0)
+      setTimerState('running')
+      rafRef.current = requestAnimationFrame(runTick)
+    }
   }
 
   if (!recipe) {
@@ -170,14 +203,12 @@ export default function TimerPage() {
 
   const currentStep = recipe.steps[stepIndex]
   const totalSteps = recipe.steps.length
-  const stepDuration = currentStep?.duration || 1
-  const progress = (stepDuration - remaining) / stepDuration
-  const dashOffset = CIRCUMFERENCE * (1 - progress)
-  const minutes = Math.floor(remaining / 60)
-  const seconds = remaining % 60
+  const minutes = Math.floor(displaySeconds / 60)
+  const seconds = displaySeconds % 60
+  const isRunning = timerState === 'running'
+  const isActive = timerState === 'running' || timerState === 'paused'
 
-  // Done screen
-  if (state === 'done') {
+  if (timerState === 'done') {
     const today = new Date().toISOString().slice(0, 10)
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6">
@@ -191,7 +222,6 @@ export default function TimerPage() {
             <Coffee className="size-12 text-primary" />
           </div>
         </motion.div>
-
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -202,7 +232,6 @@ export default function TimerPage() {
           <p className="text-muted-foreground">{recipe.title}</p>
           <p className="text-sm text-muted-foreground">타이머 로그가 오늘의 노트에 저장됐어요</p>
         </motion.div>
-
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -224,125 +253,291 @@ export default function TimerPage() {
     <>
       <PageHeader title={recipe.title} showBack />
 
-      <div className="py-4 space-y-6">
+      <div className="py-4 space-y-5">
         {/* Step info */}
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground tabular-nums">
+        <div className="text-center space-y-1">
+          <p className="text-xs text-muted-foreground">
             단계 {stepIndex + 1} / {totalSteps}
           </p>
           <AnimatePresence mode="wait">
             <motion.h2
               key={stepIndex}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="text-lg font-semibold text-foreground mt-1"
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+              className="text-lg font-semibold text-foreground"
             >
               {currentStep?.label}
             </motion.h2>
           </AnimatePresence>
+          {currentStep?.waterAmount && (
+            <p className="text-sm text-primary font-medium">{currentStep.waterAmount}ml</p>
+          )}
         </div>
 
-        {/* Main timer + water animation */}
-        <div className="flex items-center justify-center gap-6">
-          {/* Circular SVG timer */}
-          <div className="relative flex items-center justify-center">
-            <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-              {/* Track */}
-              <circle
-                cx="70" cy="70" r={RADIUS}
-                fill="none"
-                stroke="hsl(var(--muted))"
-                strokeWidth="8"
-              />
-              {/* Progress */}
-              <motion.circle
-                cx="70" cy="70" r={RADIUS}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={CIRCUMFERENCE}
-                strokeDashoffset={dashOffset}
-                transition={{ duration: 0.5, ease: 'linear' }}
-              />
-            </svg>
-            {/* Center display */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-mono font-bold text-foreground tabular-nums">
-                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-              </span>
-              {currentStep?.waterAmount && (
-                <span className="text-xs text-muted-foreground mt-1">
-                  {currentStep.waterAmount}ml
-                </span>
-              )}
-            </div>
-          </div>
+        {/* ── Main animation ── */}
+        <div className="flex flex-col items-center">
+          {/* 3D perspective container */}
+          <div
+            className="w-full max-w-[240px]"
+            style={{ perspective: '700px', perspectiveOrigin: '50% 10%' }}
+          >
+            <svg
+              viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+              className="w-full drop-shadow-xl"
+              style={{
+                transform: 'rotateX(8deg) rotateY(-4deg)',
+                transformStyle: 'preserve-3d',
+                filter: isRunning
+                  ? 'drop-shadow(0 16px 40px rgba(0,0,0,0.18)) drop-shadow(0 0 32px hsl(38 92% 50% / 0.12))'
+                  : 'drop-shadow(0 12px 28px rgba(0,0,0,0.12))',
+                transition: 'filter 0.6s ease',
+              }}
+            >
+              <defs>
+                {/* Coffee gradient */}
+                <linearGradient id="coffeeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(32 80% 42%)" />
+                  <stop offset="100%" stopColor="hsl(22 70% 22%)" />
+                </linearGradient>
+                {/* Glass highlight gradient (left-to-right sheen) */}
+                <linearGradient id="glassHighlight" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.28)" />
+                  <stop offset="18%" stopColor="rgba(255,255,255,0.04)" />
+                  <stop offset="82%" stopColor="rgba(0,0,0,0.04)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.14)" />
+                </linearGradient>
+                {/* Dripper gradient (top-light) */}
+                <linearGradient id="dripperGrad" x1="0.3" y1="0" x2="0.7" y2="1"
+                  gradientUnits="objectBoundingBox">
+                  <stop offset="0%" stopColor="hsl(30 18% 86%)" />
+                  <stop offset="100%" stopColor="hsl(30 12% 70%)" />
+                </linearGradient>
+                {/* Server clip */}
+                <clipPath id="serverClip">
+                  <rect x={SERVER_X} y={SERVER_Y} width={SERVER_W} height={SERVER_H} rx="13" />
+                </clipPath>
+                {/* Dripper clip */}
+                <clipPath id="dripperClip">
+                  <polygon points="40,8 160,8 122,78 78,78" />
+                </clipPath>
+                {/* Glow filter */}
+                <filter id="amberGlow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="10" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
 
-          {/* GSAP Water cup SVG */}
-          <div className="flex flex-col items-center">
-            <svg width="60" height="90" viewBox="0 0 60 90">
-              {/* Cup outline */}
-              <path
-                d="M8,5 L4,85 Q4,88 8,88 L52,88 Q56,88 56,85 L52,5 Z"
-                fill="none"
-                stroke="hsl(var(--border))"
-                strokeWidth="2"
-              />
-              {/* Water clip path */}
-              <clipPath id="cupClip">
-                <path d="M9,6 L5,84 Q5,87 9,87 L51,87 Q55,87 55,84 L51,6 Z" />
-              </clipPath>
-              {/* Water fill */}
-              <g clipPath="url(#cupClip)">
+              {/* ── Dripper ── */}
+              <g>
+                {/* Rim (top bar) */}
+                <rect x="38" y="5" width="124" height="9" rx="4.5"
+                  fill="url(#dripperGrad)" stroke="hsl(var(--border))" strokeWidth="1.2" />
+
+                {/* Outer cone body */}
+                <polygon
+                  points="40,14 160,14 122,78 78,78"
+                  fill="url(#dripperGrad)"
+                  stroke="hsl(var(--border))" strokeWidth="1.5"
+                />
+
+                {/* Filter paper (lighter inside) */}
+                <polygon
+                  points="46,17 154,17 120,75 80,75"
+                  fill="rgba(255,255,255,0.55)"
+                  clipPath="url(#dripperClip)"
+                />
+
+                {/* V60 ridges — characteristic angled lines */}
+                <g stroke="rgba(0,0,0,0.12)" strokeWidth="1" clipPath="url(#dripperClip)">
+                  <line x1="86" y1="18" x2="83" y2="73" />
+                  <line x1="100" y1="17" x2="100" y2="75" />
+                  <line x1="114" y1="18" x2="117" y2="73" />
+                  <line x1="93" y1="17" x2="91" y2="74" />
+                  <line x1="107" y1="17" x2="109" y2="74" />
+                </g>
+
+                {/* Cone highlight sheen */}
+                <polygon
+                  points="40,14 160,14 122,78 78,78"
+                  fill="url(#glassHighlight)"
+                  clipPath="url(#dripperClip)"
+                />
+
+                {/* Dripper glow halo (amber, when running) */}
+                <ellipse
+                  ref={dripperGlowRef}
+                  cx="100" cy="46" rx="62" ry="36"
+                  fill="hsl(38 92% 50%)"
+                  opacity="0"
+                  filter="url(#amberGlow)"
+                  style={{ pointerEvents: 'none' }}
+                />
+
+                {/* Spout */}
+                <rect x="93" y="78" width="14" height="26" rx="5"
+                  fill="url(#dripperGrad)" stroke="hsl(var(--border))" strokeWidth="1.2" />
+                <rect x="95" y="80" width="5" height="22" rx="2.5"
+                  fill="rgba(255,255,255,0.3)" />
+              </g>
+
+              {/* ── Animated drops (visible when running) ── */}
+              <g ref={dropsGroupRef} style={{ display: isActive ? '' : 'none' }}>
+                {[0, 0.42, 0.84].map((delay, i) => (
+                  <ellipse
+                    key={i}
+                    cx={98 + i * 2}
+                    cy="105"
+                    rx="2.2"
+                    ry="3.2"
+                    fill={isRunning ? 'hsl(38 92% 60%)' : 'hsl(38 92% 60% / 0.4)'}
+                    style={{
+                      animation: isRunning
+                        ? `drop-fall 1.3s ease-in ${delay}s infinite`
+                        : 'none',
+                      transformBox: 'fill-box',
+                      transformOrigin: 'center',
+                      opacity: 0,
+                    }}
+                  />
+                ))}
+              </g>
+
+              {/* ── Server / Flask ── */}
+              <g>
+                {/* Neck */}
+                <rect x="82" y="108" width="36" height="18" rx="7"
+                  fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1.5" />
+                <rect x="84" y="110" width="10" height="14" rx="4"
+                  fill="rgba(255,255,255,0.25)" />
+
+                {/* Server body outline (background) */}
                 <rect
-                  ref={waterFillRef}
-                  x="0" y="100%" width="60" height="0%"
-                  fill="hsl(var(--primary) / 0.4)"
+                  x={SERVER_X} y={SERVER_Y} width={SERVER_W} height={SERVER_H} rx="13"
+                  fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1.8"
                 />
-                {/* Wave */}
+
+                {/* Coffee fill — driven by RAF */}
+                <g clipPath="url(#serverClip)">
+                  <rect
+                    ref={coffeeRectRef}
+                    x={SERVER_X} y={SERVER_Y + SERVER_H}
+                    width={SERVER_W} height="0"
+                    fill="url(#coffeeGrad)"
+                  />
+
+                  {/* Wave surface */}
+                  <g ref={waveGroupRef} transform={`translate(${SERVER_X}, ${SERVER_Y + SERVER_H - 6})`}>
+                    <svg
+                      width={SERVER_W * 2} height="12"
+                      viewBox={`0 0 ${SERVER_W * 2} 12`}
+                      overflow="visible"
+                      style={{
+                        animation: isRunning ? 'wave-scroll 1.9s linear infinite' : 'none',
+                      }}
+                    >
+                      <path
+                        d={`M0,6 Q${SERVER_W / 4},0 ${SERVER_W / 2},6 Q${SERVER_W * 3 / 4},12 ${SERVER_W},6 Q${SERVER_W * 5 / 4},0 ${SERVER_W * 3 / 2},6 Q${SERVER_W * 7 / 4},12 ${SERVER_W * 2},6 L${SERVER_W * 2},12 L0,12 Z`}
+                        fill="hsl(32 80% 52% / 0.75)"
+                      />
+                    </svg>
+                  </g>
+                </g>
+
+                {/* Glass sheen overlay */}
+                <rect
+                  x={SERVER_X} y={SERVER_Y} width={SERVER_W} height={SERVER_H} rx="13"
+                  fill="url(#glassHighlight)"
+                />
+
+                {/* Right handle */}
                 <path
-                  ref={waveRef}
-                  d="M0,8 Q15,4 30,8 Q45,12 60,8 L60,20 L0,20 Z"
-                  fill="hsl(var(--primary) / 0.6)"
-                  transform="translate(0, -8)"
+                  d="M 152,152 Q 178,152 178,178 Q 178,205 152,205"
+                  fill="none" stroke="hsl(var(--border))" strokeWidth="10"
+                  strokeLinecap="round"
                 />
+                <path
+                  d="M 152,152 Q 178,152 178,178 Q 178,205 152,205"
+                  fill="none" stroke="hsl(var(--card))" strokeWidth="6"
+                  strokeLinecap="round"
+                />
+
+                {/* Server body front border (re-draw on top for crisp edge) */}
+                <rect
+                  x={SERVER_X} y={SERVER_Y} width={SERVER_W} height={SERVER_H} rx="13"
+                  fill="none" stroke="hsl(var(--border))" strokeWidth="1.8"
+                />
+
+                {/* Volume markings */}
+                {[0.25, 0.5, 0.75].map((mark) => (
+                  <g key={mark}>
+                    <line
+                      x1={SERVER_X + 6} y1={SERVER_Y + SERVER_H * (1 - mark)}
+                      x2={SERVER_X + 14} y2={SERVER_Y + SERVER_H * (1 - mark)}
+                      stroke="hsl(var(--border))" strokeWidth="1"
+                      opacity="0.6"
+                    />
+                  </g>
+                ))}
               </g>
             </svg>
-            <span className="text-xs text-muted-foreground mt-1">물 붓기</span>
+          </div>
+
+          {/* Countdown display below animation */}
+          <div className="mt-4 text-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={stepIndex}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ duration: 0.2 }}
+                className="tabular-nums font-mono"
+              >
+                <span
+                  className={cn(
+                    'text-5xl font-bold tracking-tight',
+                    isRunning ? 'text-primary' : 'text-foreground',
+                  )}
+                  style={{ transition: 'color 0.4s ease' }}
+                >
+                  {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                </span>
+              </motion.div>
+            </AnimatePresence>
+            <p className="text-xs text-muted-foreground mt-1">
+              {timerState === 'idle' ? '시작 버튼을 눌러주세요' :
+               timerState === 'paused' ? '일시정지됨' : '브루잉 중...'}
+            </p>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="space-y-3">
-          {state === 'idle' && (
-            <Button className="w-full gap-2" size="lg" onClick={start}>
-              <Play className="size-4 fill-current" />
-              시작
-            </Button>
+        <div className="space-y-3 px-1">
+          {timerState === 'idle' && (
+            <motion.div whileTap={{ scale: 0.97 }}>
+              <Button className="w-full gap-2" size="lg" onClick={start}>
+                <Play className="size-4 fill-current" />
+                타이머 시작
+              </Button>
+            </motion.div>
           )}
-
-          {(state === 'running' || state === 'paused') && (
+          {isActive && (
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 size="lg"
                 className="flex-1 gap-2"
-                onClick={togglePause}
+                onClick={timerState === 'running' ? pause : resume}
               >
-                {state === 'running' ? (
+                {timerState === 'running' ? (
                   <><Pause className="size-4" />일시정지</>
                 ) : (
                   <><Play className="size-4 fill-current" />재개</>
                 )}
               </Button>
-              <Button
-                size="lg"
-                className="flex-1 gap-2"
-                onClick={goNextStep}
-              >
+              <Button size="lg" className="flex-1 gap-2" onClick={skipStep}>
                 <SkipForward className="size-4" />
                 다음 단계
               </Button>
@@ -357,12 +552,13 @@ export default function TimerPage() {
             return (
               <div key={step.stepOrder} className="px-4 relative">
                 <motion.div
-                  animate={status === 'active' ? { backgroundColor: 'hsl(var(--primary) / 0.06)' } : { backgroundColor: 'transparent' }}
+                  animate={status === 'active'
+                    ? { backgroundColor: 'hsl(var(--primary) / 0.06)' }
+                    : { backgroundColor: 'transparent' }}
                   transition={{ duration: 0.3 }}
                   className="absolute inset-0"
                 />
                 <div className="relative">
-                  {/* Active indicator */}
                   {status === 'active' && (
                     <motion.div
                       layoutId="step-active-bar"
@@ -384,6 +580,9 @@ export default function TimerPage() {
                       {i + 1}
                     </span>
                     <span className="flex-1 text-foreground">{step.label}</span>
+                    {step.waterAmount && (
+                      <span className="text-primary text-xs">{step.waterAmount}ml</span>
+                    )}
                     <span className="text-muted-foreground tabular-nums">{step.duration}초</span>
                   </div>
                 </div>
