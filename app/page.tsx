@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Search } from 'lucide-react'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 import { RecipeCard } from '@/components/brewing/recipe-card'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { apiFetch } from '@/lib/api'
@@ -17,6 +19,8 @@ interface Recipe {
   waterGrams: number | null
   likeCount: number
   tags: string[]
+  roastLevel: string | null
+  imageUrl: string | null
 }
 
 interface FeedResponse {
@@ -38,18 +42,32 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
 }
 
+const FILTER_TABS = [
+  { label: 'ALL', value: 'all' },
+  { label: 'POUR OVER', value: 'pour_over' },
+  { label: 'ESPRESSO', value: 'espresso' },
+  { label: 'COLD BREW', value: 'cold_brew' },
+] as const
+
 export default function FeedPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [cursor, setCursor] = useState<number | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const [activeMethod, setActiveMethod] = useState<string>('all')
+  const [loadTrigger, setLoadTrigger] = useState(0)
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return
     setLoading(true)
     try {
-      const url = cursor ? `/recipes?cursor=${cursor}&limit=10` : '/recipes?limit=10'
+      // TODO: 백엔드 미구현 — GET /recipes?method=string 엔드포인트 추가 필요
+      // 현재 method 파라미터는 서버에서 무시됨
+      const methodParam = activeMethod !== 'all' ? `&method=${activeMethod}` : ''
+      const url = cursor
+        ? `/recipes?cursor=${cursor}&limit=10${methodParam}`
+        : `/recipes?limit=10${methodParam}`
       const data = await apiFetch<FeedResponse>(url)
       setRecipes(prev => [...prev, ...data.items])
       setCursor(data.nextCursor)
@@ -60,10 +78,11 @@ export default function FeedPage() {
     } finally {
       setLoading(false)
     }
-  }, [cursor, hasMore, loading])
+  }, [cursor, hasMore, loading, activeMethod])
 
-  // Initial load
-  useEffect(() => { loadMore() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Initial load + tab 전환 후 강제 리로드
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadMore() }, [loadTrigger])
 
   // Infinite scroll via IntersectionObserver
   useEffect(() => {
@@ -80,7 +99,7 @@ export default function FeedPage() {
   return (
     <div className="space-y-0">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm">
         <div className="h-14 flex items-center justify-between">
           <h1 className="text-lg font-bold tracking-tight text-foreground">CoffeeZip</h1>
           <div className="flex items-center gap-1">
@@ -95,20 +114,84 @@ export default function FeedPage() {
         </div>
       </header>
 
+      {/* 필터 탭 */}
+      <div className="flex gap-1 overflow-x-auto scrollbar-none pb-1 pt-2">
+        {FILTER_TABS.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => {
+              setActiveMethod(tab.value)
+              setRecipes([])
+              setCursor(null)
+              setHasMore(true)
+              setLoadTrigger(t => t + 1)
+            }}
+            className={cn(
+              'label-upper shrink-0 px-3 py-1.5 rounded-full text-xs transition-colors',
+              activeMethod === tab.value
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Feed */}
-      <div className="pt-4 pb-2">
-        {recipes.length === 0 && !loading ? (
+      <div className="pt-3 pb-2">
+        {/* Hero 카드 */}
+        {loading && recipes.length === 0 ? (
+          <div className="aspect-[16/9] bg-[hsl(var(--surface-container))] rounded-2xl animate-pulse mb-3" />
+        ) : recipes.length > 0 ? (
+          <motion.div
+            className="mb-3"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <Link href={`/recipes/${recipes[0].id}`}>
+              <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[hsl(var(--surface-container))]">
+                {recipes[0].imageUrl && (
+                  <img
+                    src={recipes[0].imageUrl}
+                    alt={recipes[0].title}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  {recipes[0].roastLevel && (
+                    <p className="label-upper text-white/70 mb-1">{recipes[0].roastLevel}</p>
+                  )}
+                  <h2 className="text-white font-bold text-lg tracking-display leading-tight">
+                    {recipes[0].title}
+                  </h2>
+                  {recipes[0].coffeeBean && (
+                    <p className="text-white/70 text-sm mt-0.5">
+                      {recipes[0].coffeeBean}{recipes[0].origin && ` · ${recipes[0].origin}`}
+                    </p>
+                  )}
+                  <p className="text-white/50 text-xs mt-1">♥ {recipes[0].likeCount}</p>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+        ) : !loading ? (
           <div className="text-center text-muted-foreground py-20 text-sm">
             아직 레시피가 없어요
           </div>
-        ) : (
+        ) : null}
+
+        {/* 일반 카드 리스트 (첫 번째 제외) */}
+        {recipes.length > 1 && (
           <motion.div
             className="space-y-3"
             variants={container}
             initial="hidden"
             animate="show"
           >
-            {recipes.map(recipe => (
+            {recipes.slice(1).map(recipe => (
               <motion.div key={recipe.id} variants={item}>
                 <RecipeCard {...recipe} />
               </motion.div>
@@ -116,8 +199,8 @@ export default function FeedPage() {
           </motion.div>
         )}
 
-        {/* Loading skeletons */}
-        {loading && (
+        {/* 로딩 스켈레톤 */}
+        {loading && recipes.length > 0 && (
           <div className="space-y-3 mt-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <RecipeCard.Skeleton key={i} />
@@ -125,7 +208,7 @@ export default function FeedPage() {
           </div>
         )}
 
-        {/* Infinite scroll sentinel */}
+        {/* 무한 스크롤 sentinel */}
         <div ref={sentinelRef} className="h-4" />
 
         {!hasMore && recipes.length > 0 && (
