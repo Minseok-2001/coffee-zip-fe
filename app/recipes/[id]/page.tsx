@@ -225,7 +225,7 @@ export default function RecipeDetailPage() {
         )}
 
         {/* Comments */}
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-5">
           <button
             onClick={() => setCommentOpen(prev => !prev)}
             className="w-full flex items-center justify-between"
