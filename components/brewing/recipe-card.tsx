@@ -78,12 +78,28 @@ export function RecipeCard({
         <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] overflow-hidden transition-colors">
           {/* 이미지 영역 */}
           <div className="relative aspect-video bg-[hsl(var(--surface-container))]">
-            {imageUrl && (
+            {imageUrl ? (
               <img
                 src={imageUrl}
                 alt={title}
                 className="w-full h-full object-cover"
               />
+            ) : (
+              /* 이미지 없을 때 타이포 강조 슬롯
+                 TODO: dripper 필드 추가 시 dripper별 default image 매핑으로 교체 */
+              <div className="absolute inset-0 flex flex-col justify-center px-5 gap-1">
+                {(coffeeGrams && waterGrams) ? (
+                  <p className="tracking-display font-bold text-foreground/90" style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)' }}>
+                    {coffeeGrams}g<span className="text-muted-foreground font-normal mx-1.5">:</span>{waterGrams}g
+                  </p>
+                ) : null}
+                {waterTemp ? (
+                  <p className="label-upper text-muted-foreground">{waterTemp}°C</p>
+                ) : null}
+                {!coffeeGrams && !waterTemp && (
+                  <p className="label-upper text-muted-foreground">Recipe</p>
+                )}
+              </div>
             )}
             {roastLevel && (
               <span className="label-upper absolute top-3 left-3 bg-foreground/80 text-background text-[10px] px-2 py-0.5 rounded-full">

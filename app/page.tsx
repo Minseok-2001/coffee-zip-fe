@@ -152,12 +152,24 @@ export default function FeedPage() {
           >
             <Link href={`/recipes/${recipes[0].id}`}>
               <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[hsl(var(--surface-container))]">
-                {recipes[0].imageUrl && (
+                {recipes[0].imageUrl ? (
                   <img
                     src={recipes[0].imageUrl}
                     alt={recipes[0].title}
                     className="w-full h-full object-cover"
                   />
+                ) : (
+                  /* TODO: dripper 필드 추가 시 dripper별 default image 매핑으로 교체 */
+                  <div className="absolute inset-0 flex flex-col justify-end p-5 gap-1">
+                    {(recipes[0].coffeeGrams && recipes[0].waterGrams) && (
+                      <p className="tracking-display font-bold text-foreground/90 text-3xl">
+                        {recipes[0].coffeeGrams}g<span className="text-muted-foreground font-normal mx-2">:</span>{recipes[0].waterGrams}g
+                      </p>
+                    )}
+                    {recipes[0].waterTemp && (
+                      <p className="label-upper text-muted-foreground">{recipes[0].waterTemp}°C</p>
+                    )}
+                  </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
