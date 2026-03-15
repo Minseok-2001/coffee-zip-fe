@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, KeyboardEvent } from 'react'
+import { useState, useEffect, KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { isLoggedIn } from '@/lib/auth'
 import { X, Plus, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,12 @@ const defaultStep = (stepOrder: number): Step => ({
 export default function NewRecipePage() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      router.replace('/login')
+    }
+  }, [router])
   const [titleError, setTitleError] = useState(false)
 
   const [form, setForm] = useState<FormState>({
