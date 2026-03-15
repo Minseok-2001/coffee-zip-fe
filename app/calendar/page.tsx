@@ -3,11 +3,25 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, PenLine, BarChart2, Coffee, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
+
+interface DaySummary {
+  name: string
+  method: string
+  temp: string
+  duration: string
+}
+
+function formatKorDate(ds: string) {
+  const [y, m, d] = ds.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+  return `${y}년 ${m}월 ${d}일 ${dayNames[date.getDay()]}요일`
+}
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -17,12 +31,41 @@ export default function CalendarPage() {
   const [noteDates, setNoteDates] = useState<Set<string>>(new Set())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [direction, setDirection] = useState(0)
+  const [todayBrew, setTodayBrew] = useState<DaySummary | null>(null)
+  const [brewCount, setBrewCount] = useState(0)
+
+  // Bottom sheet state
+  const [sheetDate, setSheetDate] = useState<string | null>(null)
+  const [sheetData, setSheetData] = useState<DaySummary | null>(null)
+  const [sheetLoading, setSheetLoading] = useState(false)
+
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   useEffect(() => {
     apiFetch<{ dates: string[] }>(`/calendar?year=${year}&month=${month}`)
-      .then(data => setNoteDates(new Set(data.dates)))
+      .then(data => {
+        setNoteDates(new Set(data.dates))
+        setBrewCount(data.dates.length)
+      })
       .catch(() => {})
   }, [year, month])
+
+  useEffect(() => {
+    apiFetch<DaySummary>(`/calendar/${todayStr}/summary`)
+      .then(data => setTodayBrew(data))
+      .catch(() => setTodayBrew(null))
+  }, [todayStr])
+
+  // Fetch selected date summary
+  useEffect(() => {
+    if (!sheetDate) return
+    setSheetLoading(true)
+    setSheetData(null)
+    apiFetch<DaySummary>(`/calendar/${sheetDate}/summary`)
+      .then(data => setSheetData(data))
+      .catch(() => setSheetData(null))
+      .finally(() => setSheetLoading(false))
+  }, [sheetDate])
 
   function prevMonth() {
     setDirection(-1)
@@ -46,11 +89,13 @@ export default function CalendarPage() {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   }
 
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-
   function handleDayClick(ds: string) {
     setSelectedDate(ds)
-    router.push(`/notes/${ds}`)
+    setSheetDate(ds)
+  }
+
+  function closeSheet() {
+    setSheetDate(null)
   }
 
   const calendarKey = `${year}-${month}`
@@ -90,7 +135,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendar grid */}
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-4">
         {/* Day labels */}
         <div className="grid grid-cols-7 mb-2">
           {DAYS.map((d, i) => (
@@ -154,9 +199,122 @@ export default function CalendarPage() {
 
       {/* Legend */}
       <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+        <span className="w-1.5 h-1.5 rounded-full bg-foreground/40" />
         <span>노트 기록 있는 날</span>
       </div>
+
+      {/* Today's Summary */}
+      {todayBrew && (
+        <div className="bg-[hsl(var(--surface-container-low))] rounded-2xl px-4 py-3">
+          <p className="label-upper text-muted-foreground mb-1">Today's Summary</p>
+          <p className="text-sm font-semibold">{todayBrew.name}</p>
+          <p className="text-xs text-muted-foreground">{todayBrew.method} · {todayBrew.temp} · {todayBrew.duration}</p>
+        </div>
+      )}
+
+      {/* Quick Action Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => router.push(`/notes/${todayStr}`)}
+          className="bg-foreground text-background rounded-2xl p-4 text-left"
+        >
+          <PenLine className="size-4 mb-3" />
+          <p className="text-sm font-semibold">Write Today's Note</p>
+          <p className="text-xs opacity-60">Record your brew</p>
+        </button>
+
+        <button
+          className="bg-[hsl(var(--surface-container))] text-foreground rounded-2xl p-4 text-left"
+        >
+          <BarChart2 className="size-4 mb-3" />
+          <p className="text-sm font-semibold">Monthly Insights</p>
+          <p className="text-xs text-muted-foreground">{brewCount} brews logged</p>
+        </button>
+      </div>
+
+      {/* Date Bottom Sheet */}
+      <AnimatePresence>
+        {sheetDate && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeSheet}
+              className="fixed inset-0 z-40 bg-black/30"
+            />
+
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-background max-w-lg mx-auto"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3">
+                <p className="font-semibold text-foreground">{formatKorDate(sheetDate)}</p>
+                <button
+                  onClick={closeSheet}
+                  className="size-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                >
+                  <X className="size-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-5 pb-2 min-h-[80px]">
+                {sheetLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded animate-pulse w-1/3" />
+                    <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                  </div>
+                ) : sheetData ? (
+                  <div className="bg-[hsl(var(--surface-container-low))] rounded-xl px-4 py-3">
+                    <p className="label-upper text-muted-foreground mb-1">Brew Session</p>
+                    <p className="text-sm font-semibold">{sheetData.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {sheetData.method} · {sheetData.temp} · {sheetData.duration}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 py-2">
+                    <div className="size-8 rounded-xl bg-[hsl(var(--surface-container))] flex items-center justify-center">
+                      <Coffee className="size-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">기록된 브루잉이 없어요</p>
+                  </div>
+                )}
+              </div>
+
+              {/* CTAs */}
+              <div className="flex gap-2 px-5 pt-2 pb-8">
+                <button
+                  onClick={() => { closeSheet(); router.push(`/notes/${sheetDate}`) }}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl bg-foreground text-background text-sm font-medium transition-colors hover:bg-foreground/90"
+                >
+                  <PenLine className="size-3.5" />
+                  노트 작성
+                </button>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl bg-[hsl(var(--surface-container))] text-foreground text-sm font-medium transition-colors"
+                >
+                  <Coffee className="size-3.5" />
+                  브루 기록
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

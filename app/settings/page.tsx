@@ -66,6 +66,20 @@ export default function SettingsPage() {
     <>
       <PageHeader title="설정" />
 
+      {/* Profile Header */}
+      <div className="flex items-center gap-4 px-4 py-5">
+        <div className="size-14 rounded-2xl bg-[hsl(var(--surface-container))] flex items-center justify-center shrink-0">
+          <span className="text-2xl font-bold text-foreground/70">M</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground">Marcus</p>
+          <p className="text-xs text-muted-foreground mt-0.5">marcus@coffeezip.io</p>
+          <span className="label-upper inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--surface-container))] text-foreground/60">
+            Roaster Lv. 1
+          </span>
+        </div>
+      </div>
+
       <div className="py-2">
         {/* 앱 설정 */}
         <SectionLabel>앱 설정</SectionLabel>
