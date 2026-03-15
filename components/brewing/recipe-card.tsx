@@ -19,19 +19,24 @@ interface RecipeCardProps {
   tags: string[]
   initialLiked?: boolean
   onLike?: (id: number) => void
+  imageUrl?: string | null
+  roastLevel?: string | null
 }
 
 function RecipeCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 animate-pulse">
-      <div className="flex justify-between items-start">
-        <div className="h-5 bg-muted rounded w-2/3" />
-        <div className="h-5 bg-muted rounded w-12" />
-      </div>
-      <div className="h-4 bg-muted rounded w-1/2" />
-      <div className="flex gap-2">
-        <div className="h-5 bg-muted rounded-full w-16" />
-        <div className="h-5 bg-muted rounded-full w-20" />
+    <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] overflow-hidden space-y-0 animate-pulse">
+      <div className="aspect-video bg-muted" />
+      <div className="p-4 space-y-3">
+        <div className="flex justify-between items-start">
+          <div className="h-5 bg-muted rounded w-2/3" />
+          <div className="h-5 bg-muted rounded w-12" />
+        </div>
+        <div className="h-4 bg-muted rounded w-1/2" />
+        <div className="flex gap-2">
+          <div className="h-5 bg-muted rounded-full w-16" />
+          <div className="h-5 bg-muted rounded-full w-20" />
+        </div>
       </div>
     </div>
   )
@@ -49,6 +54,8 @@ export function RecipeCard({
   tags,
   initialLiked = false,
   onLike,
+  roastLevel,
+  imageUrl,
 }: RecipeCardProps) {
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialLikeCount)
@@ -63,73 +70,104 @@ export function RecipeCard({
 
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: '0 8px 24px -4px rgba(0,0,0,0.08)' }}
+      whileHover={{ y: -2, boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
     >
       <Link href={`/recipes/${id}`}>
-        <div className="rounded-2xl border border-border bg-card p-4 space-y-3 transition-colors hover:border-primary/30">
-          <div className="flex justify-between items-start gap-3">
-            <h2 className="font-semibold text-foreground leading-snug flex-1">{title}</h2>
-            <button
-              onClick={handleLike}
-              className="flex items-center gap-1 text-sm shrink-0 mt-0.5"
-              aria-label={liked ? '좋아요 취소' : '좋아요'}
-            >
-              <motion.div
-                animate={liked ? { scale: [1, 1.35, 1] } : { scale: 1 }}
-                transition={{ duration: 0.25 }}
-              >
-                <Heart
-                  className={cn(
-                    'size-4 transition-colors',
-                    liked ? 'fill-primary text-primary' : 'text-muted-foreground'
-                  )}
-                />
-              </motion.div>
-              <span className={cn('tabular-nums', liked ? 'text-primary' : 'text-muted-foreground')}>
-                {likeCount}
+        <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] overflow-hidden transition-colors">
+          {/* 이미지 영역 */}
+          <div className="relative aspect-video bg-[hsl(var(--surface-container))]">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              /* 이미지 없을 때 타이포 강조 슬롯
+                 TODO: dripper 필드 추가 시 dripper별 default image 매핑으로 교체 */
+              <div className="absolute inset-0 flex flex-col justify-center px-5 gap-1">
+                {(coffeeGrams && waterGrams) ? (
+                  <p className="tracking-display font-bold text-foreground/90" style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)' }}>
+                    {coffeeGrams}g<span className="text-muted-foreground font-normal mx-1.5">:</span>{waterGrams}g
+                  </p>
+                ) : null}
+                {waterTemp ? (
+                  <p className="label-upper text-muted-foreground">{waterTemp}°C</p>
+                ) : null}
+                {!coffeeGrams && !waterTemp && (
+                  <p className="label-upper text-muted-foreground">Recipe</p>
+                )}
+              </div>
+            )}
+            {roastLevel && (
+              <span className="label-upper absolute top-3 left-3 bg-foreground/80 text-background text-[10px] px-2 py-0.5 rounded-full">
+                {roastLevel}
               </span>
-            </button>
+            )}
           </div>
-
-          {(coffeeBean || origin) && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Coffee className="size-3.5 shrink-0" />
-              <span>{coffeeBean}{origin && ` · ${origin}`}</span>
-            </div>
-          )}
-
-          {(waterTemp || (coffeeGrams && waterGrams)) && (
-            <div className="flex gap-3 text-xs text-muted-foreground">
-              {waterTemp && (
-                <span className="flex items-center gap-1">
-                  <Thermometer className="size-3" />
-                  {waterTemp}°C
-                </span>
-              )}
-              {coffeeGrams && waterGrams && (
-                <span className="flex items-center gap-1">
-                  <Scale className="size-3" />
-                  {coffeeGrams}g : {waterGrams}g
-                </span>
-              )}
-            </div>
-          )}
-
-          {tags.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap">
-              {tags.map(tag => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="text-xs px-2 py-0 bg-primary/10 text-primary border-0 hover:bg-primary/15"
+          {/* 텍스트 영역 */}
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between items-start gap-3">
+              <h2 className="font-semibold text-foreground leading-snug flex-1">{title}</h2>
+              <button
+                onClick={handleLike}
+                className="flex items-center gap-1 text-sm shrink-0 mt-0.5"
+                aria-label={liked ? '좋아요 취소' : '좋아요'}
+              >
+                <motion.div
+                  animate={liked ? { scale: [1, 1.35, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.25 }}
                 >
-                  #{tag}
-                </Badge>
-              ))}
+                  <Heart
+                    className={cn(
+                      'size-4 transition-colors',
+                      liked ? 'fill-foreground text-foreground' : 'text-muted-foreground'
+                    )}
+                  />
+                </motion.div>
+                <span className={cn('tabular-nums', liked ? 'text-foreground' : 'text-muted-foreground')}>
+                  {likeCount}
+                </span>
+              </button>
             </div>
-          )}
+            {(coffeeBean || origin) && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Coffee className="size-3.5 shrink-0" />
+                <span>{coffeeBean}{origin && ` · ${origin}`}</span>
+              </div>
+            )}
+            {(waterTemp || (coffeeGrams && waterGrams)) && (
+              <div className="flex gap-3 text-xs text-muted-foreground">
+                {waterTemp && (
+                  <span className="flex items-center gap-1">
+                    <Thermometer className="size-3" />
+                    {waterTemp}°C
+                  </span>
+                )}
+                {coffeeGrams && waterGrams && (
+                  <span className="flex items-center gap-1">
+                    <Scale className="size-3" />
+                    {coffeeGrams}g : {waterGrams}g
+                  </span>
+                )}
+              </div>
+            )}
+            {tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {tags.map(tag => (
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="text-xs px-2 py-0 bg-[hsl(var(--surface-container))] text-foreground/70 border-0"
+                  >
+                    #{tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Link>
     </motion.div>

@@ -15,7 +15,7 @@ export function PageHeader({ title, showBack = false, right, className }: PageHe
   const router = useRouter()
 
   return (
-    <header className={cn('sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border', className)}>
+    <header className={cn('sticky top-0 z-40 bg-background/95 backdrop-blur-sm', className)}>
       <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (

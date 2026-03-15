@@ -103,7 +103,7 @@ export default function RecipeDetailPage() {
         right={
           <button
             onClick={toggleLike}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border border-border hover:border-primary/40 transition-colors"
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full bg-[hsl(var(--surface-container))] transition-colors"
           >
             <motion.div
               animate={liked ? { scale: [1, 1.4, 1] } : { scale: 1 }}
@@ -120,7 +120,7 @@ export default function RecipeDetailPage() {
 
       <div className="space-y-4 py-4">
         {/* Cover card */}
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-5 space-y-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{recipe.title}</h1>
             {recipe.description && (
@@ -185,7 +185,7 @@ export default function RecipeDetailPage() {
           {recipe.tags.length > 0 && (
             <div className="flex gap-1.5 flex-wrap">
               {recipe.tags.map(tag => (
-                <Badge key={tag} variant="secondary" className="bg-primary/10 text-primary border-0">
+                <Badge key={tag} variant="secondary" className="bg-[hsl(var(--surface-container))] text-foreground/70 border-0">
                   #{tag}
                 </Badge>
               ))}
@@ -195,24 +195,28 @@ export default function RecipeDetailPage() {
 
         {/* Steps */}
         {recipe.steps.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-5">
             <h2 className="font-semibold text-foreground mb-1">브루잉 단계</h2>
             <p className="text-xs text-muted-foreground mb-4">총 {recipe.steps.length}단계</p>
-            <div className="relative divide-y divide-border/50">
-              {recipe.steps.map(step => (
-                <BrewingStep
-                  key={step.id}
-                  stepOrder={step.stepOrder}
-                  label={step.label}
-                  duration={step.duration}
-                  waterAmount={step.waterAmount}
-                  status="upcoming"
-                />
+            <div className="relative space-y-2">
+              {recipe.steps.map((step, index) => (
+                <div key={step.id}>
+                  <p className="label-upper text-muted-foreground mb-1">
+                    {String(index + 1).padStart(2, '0')}
+                  </p>
+                  <BrewingStep
+                    stepOrder={step.stepOrder}
+                    label={step.label}
+                    duration={step.duration}
+                    waterAmount={step.waterAmount}
+                    status="upcoming"
+                  />
+                </div>
               ))}
             </div>
             <Separator className="my-4" />
             <Link href={`/timer/${id}`}>
-              <Button className="w-full gap-2" size="lg">
+              <Button variant="cta" className="w-full gap-2" size="lg">
                 <Play className="size-4 fill-current" />
                 브루잉 시작
               </Button>
@@ -221,7 +225,7 @@ export default function RecipeDetailPage() {
         )}
 
         {/* Comments */}
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-5">
           <button
             onClick={() => setCommentOpen(prev => !prev)}
             className="w-full flex items-center justify-between"
