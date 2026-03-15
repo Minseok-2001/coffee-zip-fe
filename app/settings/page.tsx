@@ -141,7 +141,10 @@ export default function SettingsPage() {
             destructive
             onClick={() => {
               localStorage.removeItem('accessToken')
-              window.location.href = '/'
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('memberId')
+              localStorage.removeItem('nickname')
+              window.location.href = '/login'
             }}
           />
         </div>
