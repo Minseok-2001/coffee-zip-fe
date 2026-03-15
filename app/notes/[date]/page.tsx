@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { isLoggedIn } from '@/lib/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clock, Coffee, Check } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
@@ -32,8 +33,15 @@ function formatDateKo(dateStr: string) {
 
 export default function NotePage() {
   const { date } = useParams()
+  const router = useRouter()
   const dateStr = date as string
   const [note, setNote] = useState<Note | null>(null)
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      router.replace('/login')
+    }
+  }, [router])
   const [content, setContent] = useState('')
   const [rating, setRating] = useState(0)
   const [saved, setSaved] = useState(false)
