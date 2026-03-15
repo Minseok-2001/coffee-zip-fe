@@ -3,8 +3,6 @@
 import { useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-
 function CallbackHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -22,8 +20,9 @@ function CallbackHandler() {
       return
     }
 
-    fetch(`${API_URL}/auth/google/callback`, {
+    fetch('/api/auth/google/callback', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
     })
@@ -32,8 +31,7 @@ function CallbackHandler() {
         return res.json()
       })
       .then(data => {
-        localStorage.setItem('accessToken', data.accessToken)
-        localStorage.setItem('refreshToken', data.refreshToken)
+        // 토큰은 httpOnly 쿠키로 저장됨. 비민감 정보만 localStorage에 보관
         localStorage.setItem('memberId', String(data.memberId))
         localStorage.setItem('nickname', data.nickname)
         router.replace('/')

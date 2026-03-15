@@ -22,9 +22,9 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // 이미 로그인한 경우 피드로
-    const token = localStorage.getItem('accessToken')
-    if (token) router.replace('/')
+    // 이미 로그인한 경우 피드로 (httpOnly 쿠키는 JS 접근 불가, memberId로 판별)
+    const memberId = localStorage.getItem('memberId')
+    if (memberId) router.replace('/')
   }, [router])
 
   return (
