@@ -76,8 +76,6 @@ export default function SettingsPage() {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken')
-    if (!token) return
     apiFetch<MeResponse>('/me').then(setMe).catch(() => {})
   }, [])
 
