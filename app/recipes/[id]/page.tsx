@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { isLoggedIn } from '@/lib/auth'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -51,6 +52,7 @@ interface Recipe {
 
 export default function RecipeDetailPage() {
   const { id } = useParams()
+  const router = useRouter()
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -63,6 +65,7 @@ export default function RecipeDetailPage() {
   }, [id])
 
   async function toggleLike() {
+    if (!isLoggedIn()) { router.push('/login'); return }
     try {
       const res = await apiFetch<{ liked: boolean; likeCount: number }>(`/recipes/${id}/like`, { method: 'POST' })
       setLiked(res.liked)
@@ -71,6 +74,7 @@ export default function RecipeDetailPage() {
   }
 
   async function submitComment() {
+    if (!isLoggedIn()) { router.push('/login'); return }
     if (!newComment.trim()) return
     try {
       const comment = await apiFetch<Comment>(`/recipes/${id}/comments`, {
