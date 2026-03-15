@@ -9,7 +9,7 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 function getGoogleOAuthUrl() {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID || '',
-    redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/callback` : 'http://localhost:3000/callback',
+    redirect_uri: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : 'http://localhost:3000/auth/callback',
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
