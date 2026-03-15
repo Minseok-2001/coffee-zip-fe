@@ -221,9 +221,8 @@ export default function SettingsPage() {
             icon={LogOut}
             label="로그아웃"
             destructive
-            onClick={() => {
-              localStorage.removeItem('accessToken')
-              localStorage.removeItem('refreshToken')
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
               localStorage.removeItem('memberId')
               localStorage.removeItem('nickname')
               window.location.href = '/login'
