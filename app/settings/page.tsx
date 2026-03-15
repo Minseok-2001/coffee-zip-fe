@@ -2,9 +2,17 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
-import { Moon, Sun, ChevronRight, Bell, Globe, Info, LogOut } from 'lucide-react'
+import { Moon, Sun, ChevronRight, Bell, Globe, Info, LogOut, Pencil, Check, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/api'
+
+type MeResponse = {
+  id: number
+  nickname: string
+  email: string | null
+  profileImage: string | null
+}
 
 function SettingRow({
   icon: Icon,
@@ -57,8 +65,53 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function SettingsPage() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [me, setMe] = useState<MeResponse | null>(null)
 
-  useEffect(() => setMounted(true), [])
+  // Nickname edit state
+  const [editingNickname, setEditingNickname] = useState(false)
+  const [nicknameInput, setNicknameInput] = useState('')
+  const [nicknameLoading, setNicknameLoading] = useState(false)
+  const [nicknameError, setNicknameError] = useState('')
+
+  useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    apiFetch<MeResponse>('/me').then(setMe).catch(() => {})
+  }, [])
+
+  const initial = me?.nickname?.[0]?.toUpperCase() ?? '?'
+
+  function startEdit() {
+    setNicknameInput(me?.nickname ?? '')
+    setNicknameError('')
+    setEditingNickname(true)
+  }
+
+  function cancelEdit() {
+    setEditingNickname(false)
+    setNicknameError('')
+  }
+
+  async function saveNickname() {
+    const trimmed = nicknameInput.trim()
+    if (!trimmed) { setNicknameError('닉네임을 입력해주세요'); return }
+    if (trimmed.length > 20) { setNicknameError('최대 20자까지 입력할 수 있어요'); return }
+    setNicknameLoading(true)
+    try {
+      const updated = await apiFetch<MeResponse>('/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ nickname: trimmed }),
+      })
+      setMe(updated)
+      setEditingNickname(false)
+    } catch {
+      setNicknameError('저장에 실패했어요. 다시 시도해주세요')
+    } finally {
+      setNicknameLoading(false)
+    }
+  }
 
   const isDark = resolvedTheme === 'dark'
 
@@ -69,11 +122,40 @@ export default function SettingsPage() {
       {/* Profile Header */}
       <div className="flex items-center gap-4 px-4 py-5">
         <div className="size-14 rounded-2xl bg-[hsl(var(--surface-container))] flex items-center justify-center shrink-0">
-          <span className="text-2xl font-bold text-foreground/70">M</span>
+          <span className="text-2xl font-bold text-foreground/70">{initial}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground">Marcus</p>
-          <p className="text-xs text-muted-foreground mt-0.5">marcus@coffeezip.io</p>
+          {editingNickname ? (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={nicknameInput}
+                  onChange={e => setNicknameInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveNickname(); if (e.key === 'Escape') cancelEdit() }}
+                  maxLength={20}
+                  className="flex-1 text-sm font-semibold bg-transparent border-b border-foreground/30 focus:border-foreground outline-none py-0.5"
+                />
+                <button onClick={saveNickname} disabled={nicknameLoading} className="text-foreground/70 hover:text-foreground">
+                  <Check className="size-4" />
+                </button>
+                <button onClick={cancelEdit} className="text-foreground/40 hover:text-foreground">
+                  <X className="size-4" />
+                </button>
+              </div>
+              {nicknameError && <p className="text-xs text-destructive">{nicknameError}</p>}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <p className="font-semibold text-foreground truncate">{me?.nickname ?? '...'}</p>
+              <button onClick={startEdit} className="text-foreground/30 hover:text-foreground/70 transition-colors shrink-0">
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+          {me?.email && (
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{me.email}</p>
+          )}
           <span className="label-upper inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--surface-container))] text-foreground/60">
             Roaster Lv. 1
           </span>
