@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Plus, Coffee } from 'lucide-react'
+import { Plus, Coffee, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { RecipeCard } from '@/components/brewing/recipe-card'
 import { Button } from '@/components/ui/button'
@@ -99,8 +99,15 @@ export default function MyRecipesPage() {
             animate="show"
           >
             {recipes.map(recipe => (
-              <motion.div key={recipe.id} variants={item}>
+              <motion.div key={recipe.id} variants={item} className="relative">
                 <RecipeCard {...recipe} />
+                <button
+                  onClick={() => router.push(`/me/recipes/${recipe.id}/edit`)}
+                  className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/40 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="레시피 수정"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
               </motion.div>
             ))}
           </motion.div>
