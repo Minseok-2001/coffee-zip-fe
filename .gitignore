@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .worktrees/
+*.mp4
+*.png
+.playwright-mcp/
+docs/PRD.md
+docs/superpowers/
+"app/timer/[id]/import yt_dlp.py"
