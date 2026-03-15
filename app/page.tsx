@@ -43,10 +43,13 @@ const item = {
 }
 
 const FILTER_TABS = [
-  { label: 'ALL', value: 'all' },
-  { label: 'POUR OVER', value: 'pour_over' },
-  { label: 'ESPRESSO', value: 'espresso' },
-  { label: 'COLD BREW', value: 'cold_brew' },
+  { label: '전체', value: '' },
+  { label: 'V60', value: 'V60' },
+  { label: '에어로프레스', value: '에어로프레스' },
+  { label: '칼리타', value: '칼리타' },
+  { label: '모카포트', value: '모카포트' },
+  { label: '프렌치프레스', value: '프렌치프레스' },
+  { label: '클레버', value: '클레버' },
 ] as const
 
 export default function FeedPage() {
@@ -55,19 +58,19 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const [activeMethod, setActiveMethod] = useState<string>('all')
+  const [selectedMethod, setSelectedMethod] = useState<string>('')
   const [loadTrigger, setLoadTrigger] = useState(0)
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return
     setLoading(true)
     try {
-      // TODO: 백엔드 미구현 — GET /recipes?method=string 엔드포인트 추가 필요
-      // 현재 method 파라미터는 서버에서 무시됨
-      const methodParam = activeMethod !== 'all' ? `&method=${activeMethod}` : ''
+      const baseUrl = selectedMethod
+        ? `/recipes?method=${encodeURIComponent(selectedMethod)}`
+        : '/recipes'
       const url = cursor
-        ? `/recipes?cursor=${cursor}&limit=10${methodParam}`
-        : `/recipes?limit=10${methodParam}`
+        ? `${baseUrl}${selectedMethod ? '&' : '?'}cursor=${cursor}&limit=10`
+        : `${baseUrl}${selectedMethod ? '&' : '?'}limit=10`
       const data = await apiFetch<FeedResponse>(url)
       setRecipes(prev => [...prev, ...data.items])
       setCursor(data.nextCursor)
@@ -78,7 +81,7 @@ export default function FeedPage() {
     } finally {
       setLoading(false)
     }
-  }, [cursor, hasMore, loading, activeMethod])
+  }, [cursor, hasMore, loading, selectedMethod])
 
   // Initial load + tab 전환 후 강제 리로드
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,7 +123,7 @@ export default function FeedPage() {
           <button
             key={tab.value}
             onClick={() => {
-              setActiveMethod(tab.value)
+              setSelectedMethod(tab.value)
               setRecipes([])
               setCursor(null)
               setHasMore(true)
@@ -128,7 +131,7 @@ export default function FeedPage() {
             }}
             className={cn(
               'label-upper shrink-0 px-3 py-1.5 rounded-full text-xs transition-colors',
-              activeMethod === tab.value
+              selectedMethod === tab.value
                 ? 'bg-foreground text-background'
                 : 'text-muted-foreground hover:text-foreground'
             )}
