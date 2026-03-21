@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { PageHeader } from '@/components/layout/page-header'
 import { TastingBar } from '@/components/catalog/TastingBar'
+import { BeanReviewForm } from '@/components/catalog/BeanReviewForm'
 import { apiFetch } from '@/lib/api'
 import { Star } from 'lucide-react'
 
@@ -76,24 +77,26 @@ export default function BeanDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      try {
-        const [beanData, reviewData] = await Promise.all([
-          apiFetch<BeanDetail>(`/beans/${id}`),
-          apiFetch<BeanReview[]>(`/beans/${id}/reviews`),
-        ])
-        setBean(beanData)
-        setReviews(reviewData)
-      } catch (err) {
-        console.error(err)
-        setError('데이터를 불러오지 못했습니다')
-      } finally {
-        setLoading(false)
-      }
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [beanData, reviewData] = await Promise.all([
+        apiFetch<BeanDetail>(`/beans/${id}`),
+        apiFetch<BeanReview[]>(`/beans/${id}/reviews`),
+      ])
+      setBean(beanData)
+      setReviews(reviewData)
+    } catch (err) {
+      console.error(err)
+      setError('데이터를 불러오지 못했습니다')
+    } finally {
+      setLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   if (loading) {
@@ -237,6 +240,17 @@ export default function BeanDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Review form */}
+        <section>
+          <p className="label-upper text-muted-foreground mb-3">리뷰 남기기</p>
+          <BeanReviewForm
+            beanId={Number(id)}
+            onSubmitted={() => {
+              fetchData()
+            }}
+          />
+        </section>
 
         {/* Reviews */}
         <div className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-5">
