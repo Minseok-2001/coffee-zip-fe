@@ -7,6 +7,7 @@ import { X, Plus, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
+import { BeanSearchField } from '@/components/catalog/BeanSearchField'
 
 const inputCls =
   'w-full bg-[hsl(var(--surface-container))] border-0 border-b-2 border-transparent focus:border-[hsl(var(--cta))] rounded-t-xl rounded-b-none px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground'
@@ -21,9 +22,6 @@ interface Step {
 interface FormState {
   title: string
   description: string
-  coffeeBean: string
-  origin: string
-  roastLevel: string
   grinder: string
   grindSize: string
   coffeeGrams: string
@@ -50,13 +48,11 @@ export default function NewRecipePage() {
     }
   }, [router])
   const [titleError, setTitleError] = useState(false)
+  const [selectedBean, setSelectedBean] = useState<{ id: number; name: string; roastery: string } | null>(null)
 
   const [form, setForm] = useState<FormState>({
     title: '',
     description: '',
-    coffeeBean: '',
-    origin: '',
-    roastLevel: '',
     grinder: '',
     grindSize: '',
     coffeeGrams: '',
@@ -123,9 +119,7 @@ export default function NewRecipePage() {
       const body = {
         title: form.title.trim(),
         ...(form.description.trim() && { description: form.description.trim() }),
-        ...(form.coffeeBean.trim() && { coffeeBean: form.coffeeBean.trim() }),
-        ...(form.origin.trim() && { origin: form.origin.trim() }),
-        ...(form.roastLevel && { roastLevel: form.roastLevel }),
+        beanId: selectedBean?.id ?? null,
         ...(form.grinder.trim() && { grinder: form.grinder.trim() }),
         ...(form.grindSize.trim() && { grindSize: form.grindSize.trim() }),
         ...(form.coffeeGrams !== '' && { coffeeGrams: Number(form.coffeeGrams) }),
@@ -190,32 +184,14 @@ export default function NewRecipePage() {
         {/* 2. 원두 정보 */}
         <section className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-4 space-y-3">
           <p className="label-upper text-muted-foreground">원두 정보</p>
-          <input
-            type="text"
-            value={form.coffeeBean}
-            onChange={e => updateForm('coffeeBean', e.target.value)}
-            placeholder="원두 이름"
-            className={inputCls}
-          />
-          <input
-            type="text"
-            value={form.origin}
-            onChange={e => updateForm('origin', e.target.value)}
-            placeholder="원산지 (예: Ethiopia)"
-            className={inputCls}
-          />
-          <select
-            value={form.roastLevel}
-            onChange={e => updateForm('roastLevel', e.target.value)}
-            className={inputCls + ' appearance-none cursor-pointer'}
-          >
-            <option value="">로스팅 레벨 선택</option>
-            <option value="Light">Light</option>
-            <option value="Medium-Light">Medium-Light</option>
-            <option value="Medium">Medium</option>
-            <option value="Medium-Dark">Medium-Dark</option>
-            <option value="Dark">Dark</option>
-          </select>
+          <div>
+            <label className="label-upper text-muted-foreground mb-2 block">원두</label>
+            <BeanSearchField
+              value={selectedBean}
+              onChange={setSelectedBean}
+              onRegisterNew={() => router.push('/catalog/beans/new')}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="number"
