@@ -32,7 +32,7 @@ export function BeanCard({
   return (
     <div
       onClick={onClick}
-      className="bg-[#1a1a1a] rounded-2xl px-4 py-3 cursor-pointer hover:bg-[#222] transition-colors"
+      className="bg-[hsl(var(--surface-container-low))] rounded-2xl px-4 py-3 cursor-pointer hover:bg-[hsl(var(--surface-container))] transition-colors"
     >
       <div className="flex justify-between items-start mb-1">
         <div>

@@ -192,7 +192,7 @@ export default function BeanDetailPage() {
               {attributes.map(attr => (
                 <span
                   key={attr.label}
-                  className="bg-[#2a2a2a] rounded-full px-3 py-1 text-xs text-foreground/80"
+                  className="bg-[hsl(var(--surface-container))] rounded-full px-3 py-1 text-xs text-foreground/80"
                 >
                   <span className="text-muted-foreground">{attr.label}</span>
                   {' '}

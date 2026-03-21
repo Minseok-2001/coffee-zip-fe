@@ -75,7 +75,7 @@ export function BeanSearchField({ value, onChange, onRegisterNew }: BeanSearchFi
   // If a bean is already selected, show it with a clear button
   if (value) {
     return (
-      <div className="flex items-center justify-between bg-[#2a2a2a] rounded-xl px-3 py-2">
+      <div className="flex items-center justify-between bg-[hsl(var(--surface-container))] rounded-xl px-3 py-2">
         <div>
           <p className="text-sm font-semibold">{value.name}</p>
           <p className="text-[11px] opacity-50">{value.roastery}</p>
@@ -98,15 +98,15 @@ export function BeanSearchField({ value, onChange, onRegisterNew }: BeanSearchFi
         value={query}
         onChange={e => setQuery(e.target.value)}
         placeholder="원두 검색..."
-        className="w-full bg-[#2a2a2a] rounded-xl px-3 py-2 text-sm outline-none placeholder:opacity-40"
+        className="w-full bg-[hsl(var(--surface-container))] text-foreground rounded-xl px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
       />
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] rounded-xl border border-[#333] overflow-hidden">
+        <div className="absolute z-10 mt-1 w-full bg-[hsl(var(--surface-container-low))] rounded-xl border border-border overflow-hidden">
           {results.map(bean => (
             <button
               key={bean.id}
               onClick={() => handleSelect(bean)}
-              className="w-full text-left px-3 py-2 hover:bg-[#2a2a2a] transition-colors"
+              className="w-full text-left px-3 py-2 hover:bg-[hsl(var(--surface-container))] transition-colors"
             >
               <p className="text-sm font-semibold">{bean.name}</p>
               <p className="text-[11px] opacity-50">
@@ -116,7 +116,7 @@ export function BeanSearchField({ value, onChange, onRegisterNew }: BeanSearchFi
           ))}
           {onRegisterNew && (
             <>
-              <div className="h-px bg-[#333] mx-3" />
+              <div className="h-px bg-border mx-3" />
               <button
                 onClick={onRegisterNew}
                 className="w-full text-left px-3 py-2 text-[11px] opacity-60 hover:opacity-90 transition-opacity"

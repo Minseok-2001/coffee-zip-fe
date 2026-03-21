@@ -55,7 +55,7 @@ function ScoreRow({
             className={`w-6 h-6 rounded text-xs font-medium transition-colors ${
               n === value
                 ? 'bg-amber-400 text-black'
-                : 'bg-[#2a2a2a] opacity-60 hover:opacity-100'
+                : 'bg-[hsl(var(--surface-container))] opacity-60 hover:opacity-100'
             }`}
           >
             {n}
@@ -90,7 +90,7 @@ export function BeanReviewForm({ beanId, existingReview, onSubmitted }: BeanRevi
   }
 
   return (
-    <div className="bg-[#1a1a1a] rounded-2xl p-4 space-y-4">
+    <div className="bg-[hsl(var(--surface-container-low))] rounded-2xl p-4 space-y-4">
       <StarRating value={rating} onChange={setRating} />
       <div className="space-y-2">
         <ScoreRow label="산미" value={acidity} onChange={setAcidity} />
@@ -103,7 +103,7 @@ export function BeanReviewForm({ beanId, existingReview, onSubmitted }: BeanRevi
         onChange={e => setContent(e.target.value)}
         placeholder="맛 노트를 남겨보세요..."
         rows={3}
-        className="w-full bg-[#2a2a2a] rounded-xl px-3 py-2 text-sm outline-none resize-none placeholder:opacity-40"
+        className="w-full bg-[hsl(var(--surface-container))] text-foreground rounded-xl px-3 py-2 text-sm outline-none resize-none placeholder:text-muted-foreground"
       />
       <button
         type="button"

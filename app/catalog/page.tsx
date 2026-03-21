@@ -56,7 +56,7 @@ export default function CatalogPage() {
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeTab === tab
                 ? 'bg-foreground text-background'
-                : 'bg-[#2a2a2a] text-foreground opacity-60'
+                : 'bg-[hsl(var(--surface-container))] text-foreground opacity-60'
             }`}
           >
             {tab === 'bean' ? '원두' : tab === 'dripper' ? '드리퍼' : '그라인더'}
@@ -72,7 +72,7 @@ export default function CatalogPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="원두 검색..."
-            className="w-full bg-[#1a1a1a] rounded-xl px-3 py-2 text-sm outline-none placeholder:opacity-40"
+            className="w-full bg-[hsl(var(--surface-container))] text-foreground rounded-xl px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
           {/* Bean list */}
           {loading ? (
