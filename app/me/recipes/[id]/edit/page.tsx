@@ -40,7 +40,7 @@ interface RecipeResponse {
   waterGrams: number | null
   waterTemp: number | null
   targetYield: number | null
-  isPublic: boolean
+  publishedAt: string | null
   tags: string[]
   steps: {
     id: number
@@ -103,7 +103,7 @@ export default function EditRecipePage() {
           waterGrams: data.waterGrams != null ? String(data.waterGrams) : '',
           waterTemp: data.waterTemp != null ? String(data.waterTemp) : '',
           targetYield: data.targetYield != null ? String(data.targetYield) : '',
-          isPublic: data.isPublic,
+          isPublic: data.publishedAt != null,
         })
         if (data.bean) {
           setSelectedBean({ id: data.bean.id, name: data.bean.name, roastery: data.bean.roastery })

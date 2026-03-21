@@ -2,6 +2,8 @@
 
 import { useState, useEffect, KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+
+import { useSearchParams } from 'next/navigation'
 import { isLoggedIn } from '@/lib/auth'
 import { X, Plus, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
@@ -40,6 +42,7 @@ const defaultStep = (stepOrder: number): Step => ({
 
 export default function NewRecipePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -49,6 +52,17 @@ export default function NewRecipePage() {
   }, [router])
   const [titleError, setTitleError] = useState(false)
   const [selectedBean, setSelectedBean] = useState<{ id: number; name: string; roastery: string } | null>(null)
+
+  useEffect(() => {
+    const beanIdStr = searchParams.get('beanId')
+    if (!beanIdStr) return
+    const beanId = Number(beanIdStr)
+    if (isNaN(beanId)) return
+    // Fetch bean summary to pre-populate the field
+    apiFetch<{ id: number; name: string; roastery: string }>(`/beans/${beanId}`)
+      .then(bean => setSelectedBean({ id: bean.id, name: bean.name, roastery: bean.roastery }))
+      .catch(() => {/* ignore — field just stays empty */})
+  }, []) // intentionally empty — only on mount
 
   const [form, setForm] = useState<FormState>({
     title: '',

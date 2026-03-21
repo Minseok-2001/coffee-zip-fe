@@ -279,7 +279,7 @@ export default function BeanDetailPage() {
 
         {/* Action button */}
         <Link
-          href={`/recipes/new?beanId=${id}`}
+          href={`/me/recipes/new?beanId=${id}`}
           className="block w-full bg-foreground text-background rounded-2xl py-3.5 text-sm font-semibold text-center transition-opacity hover:opacity-90"
         >
           이 원두로 레시피 쓰기
