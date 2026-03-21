@@ -90,9 +90,10 @@ export default function EditRecipePage() {
   const [tagInput, setTagInput] = useState('')
 
   useEffect(() => {
-    async function load() {
+    const controller = new AbortController()
+    const fetchRecipe = async () => {
       try {
-        const data = await apiFetch<RecipeResponse>(`/me/recipes/${id}`)
+        const data = await apiFetch<RecipeResponse>(`/recipes/${id}`, { signal: controller.signal })
         setForm({
           title: data.title,
           description: data.description ?? '',
@@ -118,15 +119,17 @@ export default function EditRecipePage() {
           )
         }
         setTags(data.tags)
-      } catch {
-        alert('레시피를 불러오는데 실패했습니다.')
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return
+        alert('레시피를 불러오는 데 실패했습니다.')
         router.push('/me/recipes')
       } finally {
         setLoading(false)
       }
     }
-    load()
-  }, [id, router])
+    fetchRecipe()
+    return () => controller.abort()
+  }, [id])
 
   function updateForm(key: keyof FormState, value: string | boolean) {
     setForm(prev => ({ ...prev, [key]: value }))
