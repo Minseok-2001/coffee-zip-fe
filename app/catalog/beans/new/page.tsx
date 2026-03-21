@@ -18,7 +18,7 @@ interface FormState {
   name: string
   roastery: string
   origin: string
-  roastLevel: string
+  roastLevel: 'LIGHT' | 'MEDIUM_LIGHT' | 'MEDIUM' | 'MEDIUM_DARK' | 'DARK'
   region: string
   variety: string
   processing: string
@@ -50,7 +50,7 @@ export default function NewBeanPage() {
   function handleNoteKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
-      const note = noteInput.trim().replace(/,$/, '')
+      const note = noteInput.trim()
       if (note && !form.flavorNotes.includes(note)) {
         setField('flavorNotes', [...form.flavorNotes, note])
       }
@@ -147,7 +147,7 @@ export default function NewBeanPage() {
                 id="roastLevel"
                 required
                 value={form.roastLevel}
-                onChange={e => setField('roastLevel', e.target.value)}
+                onChange={e => setField('roastLevel', e.target.value as FormState['roastLevel'])}
                 className="w-full bg-muted rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring transition-shadow appearance-none"
               >
                 {ROAST_LEVELS.map(({ value, label }) => (

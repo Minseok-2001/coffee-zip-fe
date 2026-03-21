@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { PageHeader } from '@/components/layout/page-header'
 import { TastingBar } from '@/components/catalog/TastingBar'
@@ -69,11 +69,12 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function BeanDetailPage() {
-  const { id } = useParams()
-  const router = useRouter()
+  const params = useParams()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id as string
   const [bean, setBean] = useState<BeanDetail | null>(null)
   const [reviews, setReviews] = useState<BeanReview[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -87,6 +88,7 @@ export default function BeanDetailPage() {
         setReviews(reviewData)
       } catch (err) {
         console.error(err)
+        setError('데이터를 불러오지 못했습니다')
       } finally {
         setLoading(false)
       }
@@ -94,7 +96,7 @@ export default function BeanDetailPage() {
     load()
   }, [id])
 
-  if (loading || !bean) {
+  if (loading) {
     return (
       <>
         <PageHeader title="" showBack />
@@ -106,6 +108,19 @@ export default function BeanDetailPage() {
       </>
     )
   }
+
+  if (!loading && error) {
+    return (
+      <>
+        <PageHeader title="" showBack />
+        <div className="max-w-lg mx-auto px-4 py-4">
+          <p className="text-sm text-red-400 text-center py-8">{error}</p>
+        </div>
+      </>
+    )
+  }
+
+  if (!bean) return null
 
   const hasTastingData =
     bean.avgAcidity !== null ||
