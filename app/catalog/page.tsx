@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BeanCard } from '@/components/catalog/BeanCard'
+import { DripperCard } from '@/components/catalog/DripperCard'
 import { apiFetch } from '@/lib/api'
 import { Plus } from 'lucide-react'
 
@@ -17,11 +18,23 @@ interface BeanSummary {
   reviewCount: number
 }
 
+interface DripperSummary {
+  id: number
+  name: string
+  brand: string
+  type: string
+  material: string
+  extractionSpeed: string | null
+  avgRating: number | null
+  reviewCount: number
+}
+
 export default function CatalogPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'bean' | 'dripper' | 'grinder'>('bean')
   const [search, setSearch] = useState('')
   const [beans, setBeans] = useState<BeanSummary[]>([])
+  const [drippers, setDrippers] = useState<DripperSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -35,6 +48,21 @@ export default function CatalogPage() {
         setBeans(data)
       } finally {
         setLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search, activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'dripper') return
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ size: '20', page: '0' })
+        if (search) params.set('search', search)
+        const data = await apiFetch<DripperSummary[]>(`/drippers?${params}`)
+        setDrippers(data)
+      } catch {
+        // silently ignore
       }
     }, 300)
     return () => clearTimeout(timer)
@@ -89,6 +117,31 @@ export default function CatalogPage() {
             ))
           )}
         </div>
+      ) : activeTab === 'dripper' ? (
+        <div className="px-4 space-y-3">
+          {/* Search */}
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="드리퍼 검색..."
+            className="w-full bg-[hsl(var(--surface-container))] text-foreground rounded-xl px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <div className="space-y-2">
+            {drippers.map(d => (
+              <DripperCard
+                key={d.id}
+                {...d}
+                onClick={() => router.push(`/catalog/drippers/${d.id}`)}
+              />
+            ))}
+            {drippers.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm py-20">
+                등록된 드리퍼가 없어요
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="flex items-center justify-center py-16 opacity-40">
           <p className="text-sm">준비 중...</p>
@@ -96,13 +149,13 @@ export default function CatalogPage() {
       )}
 
       {/* FAB */}
-      {activeTab === 'bean' && (
+      {(activeTab === 'bean' || activeTab === 'dripper') && (
         <button
-          onClick={() => router.push('/catalog/beans/new')}
+          onClick={() => router.push(activeTab === 'dripper' ? '/catalog/drippers/new' : '/catalog/beans/new')}
           className="fixed bottom-24 right-4 bg-foreground text-background rounded-full px-4 py-2.5 flex items-center gap-2 text-sm font-semibold shadow-lg"
         >
           <Plus className="size-4" />
-          원두 등록
+          {activeTab === 'dripper' ? '드리퍼 등록' : '원두 등록'}
         </button>
       )}
     </div>
