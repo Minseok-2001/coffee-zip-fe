@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Rss, CalendarDays, BookOpen, Settings } from 'lucide-react'
+import { Rss, CalendarDays, BookOpen, Settings, Library } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/', icon: Rss, label: '피드' },
   { href: '/calendar', icon: CalendarDays, label: '캘린더' },
+  { href: '/catalog', icon: Library, label: '카탈로그' },
   { href: '/me/recipes', icon: BookOpen, label: '내 레시피' },
   { href: '/settings', icon: Settings, label: '설정' },
 ]

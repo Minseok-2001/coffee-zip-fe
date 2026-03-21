@@ -7,6 +7,12 @@ import { Heart, Thermometer, Scale, Coffee } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
+interface BeanSummary {
+  id: number
+  name: string
+  roastery: string
+}
+
 interface RecipeCardProps {
   id: number
   title: string
@@ -21,6 +27,7 @@ interface RecipeCardProps {
   onLike?: (id: number) => void
   imageUrl?: string | null
   roastLevel?: string | null
+  bean?: BeanSummary | null
 }
 
 function RecipeCardSkeleton() {
@@ -56,6 +63,7 @@ export function RecipeCard({
   onLike,
   roastLevel,
   imageUrl,
+  bean,
 }: RecipeCardProps) {
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialLikeCount)
@@ -132,10 +140,21 @@ export function RecipeCard({
                 </span>
               </button>
             </div>
-            {(coffeeBean || origin) && (
+            {(bean || coffeeBean || origin) && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Coffee className="size-3.5 shrink-0" />
-                <span>{coffeeBean}{origin && ` · ${origin}`}</span>
+                {bean ? (
+                  <Link
+                    href={`/catalog/beans/${bean.id}`}
+                    className="hover:text-foreground transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {bean.name}
+                    {bean.roastery && <span className="ml-1 opacity-70">· {bean.roastery}</span>}
+                  </Link>
+                ) : (
+                  <span>{coffeeBean}{origin && ` · ${origin}`}</span>
+                )}
               </div>
             )}
             {(waterTemp || (coffeeGrams && waterGrams)) && (

@@ -9,6 +9,12 @@ import { RecipeCard } from '@/components/brewing/recipe-card'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { apiFetch } from '@/lib/api'
 
+interface BeanSummary {
+  id: number
+  name: string
+  roastery: string
+}
+
 interface Recipe {
   id: number
   title: string
@@ -21,6 +27,7 @@ interface Recipe {
   tags: string[]
   roastLevel: string | null
   imageUrl: string | null
+  bean: BeanSummary | null
 }
 
 interface FeedResponse {
@@ -182,9 +189,12 @@ export default function FeedPage() {
                   <h2 className="text-white font-bold text-lg tracking-display leading-tight">
                     {recipes[0].title}
                   </h2>
-                  {recipes[0].coffeeBean && (
+                  {(recipes[0].bean || recipes[0].coffeeBean) && (
                     <p className="text-white/70 text-sm mt-0.5">
-                      {recipes[0].coffeeBean}{recipes[0].origin && ` · ${recipes[0].origin}`}
+                      {recipes[0].bean
+                        ? <Link href={`/catalog/beans/${recipes[0].bean.id}`} className="hover:text-white transition-colors" onClick={e => e.stopPropagation()}>{recipes[0].bean.name}{recipes[0].bean.roastery && ` · ${recipes[0].bean.roastery}`}</Link>
+                        : <>{recipes[0].coffeeBean}{recipes[0].origin && ` · ${recipes[0].origin}`}</>
+                      }
                     </p>
                   )}
                   <p className="text-white/50 text-xs mt-1">♥ {recipes[0].likeCount}</p>

@@ -6,6 +6,7 @@ import { X, Plus, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
+import { BeanSearchField } from '@/components/catalog/BeanSearchField'
 
 const inputCls =
   'w-full bg-[hsl(var(--surface-container))] border-0 border-b-2 border-transparent focus:border-[hsl(var(--cta))] rounded-t-xl rounded-b-none px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground'
@@ -20,9 +21,6 @@ interface Step {
 interface FormState {
   title: string
   description: string
-  coffeeBean: string
-  origin: string
-  roastLevel: string
   grinder: string
   grindSize: string
   coffeeGrams: string
@@ -32,27 +30,30 @@ interface FormState {
   isPublic: boolean
 }
 
-interface RecipeDetail {
+interface RecipeResponse {
   id: number
   title: string
-  description?: string | null
-  coffeeBean?: string | null
-  origin?: string | null
-  roastLevel?: string | null
-  grinder?: string | null
-  grindSize?: string | null
-  coffeeGrams?: number | null
-  waterGrams?: number | null
-  waterTemp?: number | null
-  targetYield?: number | null
-  isPublic: boolean
+  description: string | null
+  grinder: string | null
+  grindSize: string | null
+  coffeeGrams: number | null
+  waterGrams: number | null
+  waterTemp: number | null
+  targetYield: number | null
+  publishedAt: string | null
   tags: string[]
   steps: {
+    id: number
     stepOrder: number
     label: string
     duration: number
-    waterAmount?: number | null
+    waterAmount: number | null
   }[]
+  bean?: {
+    id: number
+    name: string
+    roastery: string
+  } | null
 }
 
 const defaultStep = (stepOrder: number): Step => ({
@@ -70,13 +71,11 @@ export default function EditRecipePage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [titleError, setTitleError] = useState(false)
+  const [selectedBean, setSelectedBean] = useState<{ id: number; name: string; roastery: string } | null>(null)
 
   const [form, setForm] = useState<FormState>({
     title: '',
     description: '',
-    coffeeBean: '',
-    origin: '',
-    roastLevel: '',
     grinder: '',
     grindSize: '',
     coffeeGrams: '',
@@ -91,43 +90,46 @@ export default function EditRecipePage() {
   const [tagInput, setTagInput] = useState('')
 
   useEffect(() => {
-    async function load() {
+    const controller = new AbortController()
+    const fetchRecipe = async () => {
       try {
-        const data = await apiFetch<RecipeDetail>(`/me/recipes/${id}`)
+        const data = await apiFetch<RecipeResponse>(`/recipes/${id}`, { signal: controller.signal })
         setForm({
-          title: data.title ?? '',
+          title: data.title,
           description: data.description ?? '',
-          coffeeBean: data.coffeeBean ?? '',
-          origin: data.origin ?? '',
-          roastLevel: data.roastLevel ?? '',
           grinder: data.grinder ?? '',
           grindSize: data.grindSize ?? '',
           coffeeGrams: data.coffeeGrams != null ? String(data.coffeeGrams) : '',
           waterGrams: data.waterGrams != null ? String(data.waterGrams) : '',
           waterTemp: data.waterTemp != null ? String(data.waterTemp) : '',
           targetYield: data.targetYield != null ? String(data.targetYield) : '',
-          isPublic: data.isPublic,
+          isPublic: data.publishedAt != null,
         })
-        if (data.steps && data.steps.length > 0) {
+        if (data.bean) {
+          setSelectedBean({ id: data.bean.id, name: data.bean.name, roastery: data.bean.roastery })
+        }
+        if (data.steps.length > 0) {
           setSteps(
             data.steps.map(s => ({
               stepOrder: s.stepOrder,
-              label: s.label ?? '',
-              duration: s.duration != null ? String(s.duration) : '',
+              label: s.label,
+              duration: String(s.duration),
               waterAmount: s.waterAmount != null ? String(s.waterAmount) : '',
             }))
           )
         }
-        setTags(data.tags ?? [])
-      } catch {
-        alert('레시피를 불러오는데 실패했습니다.')
+        setTags(data.tags)
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return
+        alert('레시피를 불러오는 데 실패했습니다.')
         router.push('/me/recipes')
       } finally {
         setLoading(false)
       }
     }
-    load()
-  }, [id, router])
+    fetchRecipe()
+    return () => controller.abort()
+  }, [id])
 
   function updateForm(key: keyof FormState, value: string | boolean) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -182,9 +184,7 @@ export default function EditRecipePage() {
       const body = {
         title: form.title.trim(),
         ...(form.description.trim() && { description: form.description.trim() }),
-        ...(form.coffeeBean.trim() && { coffeeBean: form.coffeeBean.trim() }),
-        ...(form.origin.trim() && { origin: form.origin.trim() }),
-        ...(form.roastLevel && { roastLevel: form.roastLevel }),
+        beanId: selectedBean?.id ?? null,
         ...(form.grinder.trim() && { grinder: form.grinder.trim() }),
         ...(form.grindSize.trim() && { grindSize: form.grindSize.trim() }),
         ...(form.coffeeGrams !== '' && { coffeeGrams: Number(form.coffeeGrams) }),
@@ -218,10 +218,12 @@ export default function EditRecipePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen pb-24">
         <PageHeader title="레시피 수정" showBack />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <div className="flex-1 max-w-lg mx-auto w-full px-4 py-4 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 rounded-2xl bg-muted animate-pulse" />
+          ))}
         </div>
       </div>
     )
@@ -260,32 +262,14 @@ export default function EditRecipePage() {
         {/* 2. 원두 정보 */}
         <section className="rounded-2xl bg-[hsl(var(--surface-container-low))] p-4 space-y-3">
           <p className="label-upper text-muted-foreground">원두 정보</p>
-          <input
-            type="text"
-            value={form.coffeeBean}
-            onChange={e => updateForm('coffeeBean', e.target.value)}
-            placeholder="원두 이름"
-            className={inputCls}
-          />
-          <input
-            type="text"
-            value={form.origin}
-            onChange={e => updateForm('origin', e.target.value)}
-            placeholder="원산지 (예: Ethiopia)"
-            className={inputCls}
-          />
-          <select
-            value={form.roastLevel}
-            onChange={e => updateForm('roastLevel', e.target.value)}
-            className={inputCls + ' appearance-none cursor-pointer'}
-          >
-            <option value="">로스팅 레벨 선택</option>
-            <option value="Light">Light</option>
-            <option value="Medium-Light">Medium-Light</option>
-            <option value="Medium">Medium</option>
-            <option value="Medium-Dark">Medium-Dark</option>
-            <option value="Dark">Dark</option>
-          </select>
+          <div>
+            <label className="label-upper text-muted-foreground mb-2 block">원두</label>
+            <BeanSearchField
+              value={selectedBean}
+              onChange={setSelectedBean}
+              onRegisterNew={() => router.push('/catalog/beans/new')}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="number"
