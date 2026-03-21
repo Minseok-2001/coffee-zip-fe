@@ -106,6 +106,7 @@ export function BeanReviewForm({ beanId, existingReview, onSubmitted }: BeanRevi
         className="w-full bg-[#2a2a2a] rounded-xl px-3 py-2 text-sm outline-none resize-none placeholder:opacity-40"
       />
       <button
+        type="button"
         onClick={handleSubmit}
         disabled={rating === 0 || submitting}
         className="w-full bg-foreground text-background rounded-xl py-2 text-sm font-semibold disabled:opacity-40"
