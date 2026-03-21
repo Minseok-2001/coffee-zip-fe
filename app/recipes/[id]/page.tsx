@@ -55,6 +55,8 @@ interface Recipe {
   tags: string[]
   steps: RecipeStep[]
   bean: BeanSummary | null
+  dripperId?: number | null
+  dripper?: { id: number; name: string; brand: string } | null
 }
 
 export default function RecipeDetailPage() {

@@ -28,6 +28,7 @@ interface RecipeCardProps {
   imageUrl?: string | null
   roastLevel?: string | null
   bean?: BeanSummary | null
+  dripper?: { id: number; name: string; brand: string } | null
 }
 
 function RecipeCardSkeleton() {
@@ -64,6 +65,7 @@ export function RecipeCard({
   roastLevel,
   imageUrl,
   bean,
+  dripper,
 }: RecipeCardProps) {
   const [liked, setLiked] = useState(initialLiked)
   const [likeCount, setLikeCount] = useState(initialLikeCount)
@@ -156,6 +158,15 @@ export function RecipeCard({
                   <span>{coffeeBean}{origin && ` · ${origin}`}</span>
                 )}
               </div>
+            )}
+            {dripper && (
+              <Link
+                href={`/catalog/drippers/${dripper.id}`}
+                onClick={e => e.stopPropagation()}
+                className="text-[11px] text-sky-400 mt-0.5 block"
+              >
+                ☕ {dripper.name} · {dripper.brand}
+              </Link>
             )}
             {(waterTemp || (coffeeGrams && waterGrams)) && (
               <div className="flex gap-3 text-xs text-muted-foreground">
