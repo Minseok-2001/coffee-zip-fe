@@ -32,6 +32,12 @@ interface Comment {
   createdAt: string
 }
 
+interface BeanSummary {
+  id: number
+  name: string
+  roastery: string
+}
+
 interface Recipe {
   id: number
   title: string
@@ -48,6 +54,7 @@ interface Recipe {
   likeCount: number
   tags: string[]
   steps: RecipeStep[]
+  bean: BeanSummary | null
 }
 
 export default function RecipeDetailPage() {
@@ -132,13 +139,20 @@ export default function RecipeDetailPage() {
             )}
           </div>
 
-          {(recipe.coffeeBean || recipe.origin) && (
+          {(recipe.bean || recipe.coffeeBean || recipe.origin) && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">원두</p>
-              <p className="font-medium text-foreground">
-                {recipe.coffeeBean}
-                {recipe.origin && <span className="text-muted-foreground font-normal"> · {recipe.origin}</span>}
-              </p>
+              {recipe.bean ? (
+                <Link href={`/catalog/beans/${recipe.bean.id}`} className="font-medium text-foreground hover:underline">
+                  {recipe.bean.name}
+                  {recipe.bean.roastery && <span className="text-muted-foreground font-normal"> · {recipe.bean.roastery}</span>}
+                </Link>
+              ) : (
+                <p className="font-medium text-foreground">
+                  {recipe.coffeeBean}
+                  {recipe.origin && <span className="text-muted-foreground font-normal"> · {recipe.origin}</span>}
+                </p>
+              )}
             </div>
           )}
 
