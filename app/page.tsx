@@ -28,6 +28,8 @@ interface Recipe {
   roastLevel: string | null
   imageUrl: string | null
   bean: BeanSummary | null
+  dripperId?: number | null
+  dripper?: { id: number; name: string; brand: string } | null
 }
 
 interface FeedResponse {

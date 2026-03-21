@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { apiFetch } from '@/lib/api'
 import { BeanSearchField } from '@/components/catalog/BeanSearchField'
+import { DripperSearchField } from '@/components/catalog/DripperSearchField'
 
 const inputCls =
   'w-full bg-[hsl(var(--surface-container))] border-0 border-b-2 border-transparent focus:border-[hsl(var(--cta))] rounded-t-xl rounded-b-none px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground'
@@ -52,16 +53,24 @@ export default function NewRecipePage() {
   }, [router])
   const [titleError, setTitleError] = useState(false)
   const [selectedBean, setSelectedBean] = useState<{ id: number; name: string; roastery: string } | null>(null)
+  const [selectedDripper, setSelectedDripper] = useState<{ id: number; name: string; brand: string } | null>(null)
 
   useEffect(() => {
     const beanIdStr = searchParams.get('beanId')
-    if (!beanIdStr) return
-    const beanId = Number(beanIdStr)
-    if (isNaN(beanId)) return
-    // Fetch bean summary to pre-populate the field
-    apiFetch<{ id: number; name: string; roastery: string }>(`/beans/${beanId}`)
-      .then(bean => setSelectedBean({ id: bean.id, name: bean.name, roastery: bean.roastery }))
-      .catch(() => {/* ignore — field just stays empty */})
+    if (beanIdStr) {
+      const beanId = Number(beanIdStr)
+      if (!isNaN(beanId)) {
+        apiFetch<{ id: number; name: string; roastery: string }>(`/beans/${beanId}`)
+          .then(bean => setSelectedBean({ id: bean.id, name: bean.name, roastery: bean.roastery }))
+          .catch(() => {/* ignore — field just stays empty */})
+      }
+    }
+    const dripperIdParam = searchParams.get('dripperId')
+    if (dripperIdParam) {
+      apiFetch<{ id: number; name: string; brand: string; type: string; material: string; extractionSpeed: string | null; avgRating: number | null; reviewCount: number }>(`/drippers/${dripperIdParam}`)
+        .then(d => setSelectedDripper({ id: d.id, name: d.name, brand: d.brand }))
+        .catch(() => {})
+    }
   }, []) // intentionally empty — only on mount
 
   const [form, setForm] = useState<FormState>({
@@ -134,6 +143,7 @@ export default function NewRecipePage() {
         title: form.title.trim(),
         ...(form.description.trim() && { description: form.description.trim() }),
         beanId: selectedBean?.id ?? null,
+        dripperId: selectedDripper?.id ?? null,
         ...(form.grinder.trim() && { grinder: form.grinder.trim() }),
         ...(form.grindSize.trim() && { grindSize: form.grindSize.trim() }),
         ...(form.coffeeGrams !== '' && { coffeeGrams: Number(form.coffeeGrams) }),
@@ -204,6 +214,14 @@ export default function NewRecipePage() {
               value={selectedBean}
               onChange={setSelectedBean}
               onRegisterNew={() => router.push('/catalog/beans/new')}
+            />
+          </div>
+          <div>
+            <label className="label-upper text-muted-foreground mb-2 block">드리퍼</label>
+            <DripperSearchField
+              value={selectedDripper}
+              onChange={setSelectedDripper}
+              onRegisterNew={() => router.push('/catalog/drippers/new')}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
