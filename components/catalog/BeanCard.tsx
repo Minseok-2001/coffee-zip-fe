@@ -1,3 +1,11 @@
+const ROAST_LEVEL_LABELS: Record<string, string> = {
+  LIGHT: '라이트',
+  MEDIUM_LIGHT: '미디엄 라이트',
+  MEDIUM: '미디엄',
+  MEDIUM_DARK: '미디엄 다크',
+  DARK: '다크',
+}
+
 interface BeanCardProps {
   id: number
   name: string
@@ -30,7 +38,7 @@ export function BeanCard({
         <div>
           <p className="font-semibold text-sm">{name}</p>
           <p className="text-[11px] opacity-50">
-            {origin} · {roastLevel} · {roastery}
+            {origin} · {ROAST_LEVEL_LABELS[roastLevel] ?? roastLevel} · {roastery}
           </p>
         </div>
         {avgRating != null && (

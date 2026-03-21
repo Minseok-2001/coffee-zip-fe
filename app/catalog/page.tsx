@@ -96,13 +96,15 @@ export default function CatalogPage() {
       )}
 
       {/* FAB */}
-      <button
-        onClick={() => router.push('/catalog/beans/new')}
-        className="fixed bottom-24 right-4 bg-foreground text-background rounded-full px-4 py-2.5 flex items-center gap-2 text-sm font-semibold shadow-lg"
-      >
-        <Plus className="size-4" />
-        원두 등록
-      </button>
+      {activeTab === 'bean' && (
+        <button
+          onClick={() => router.push('/catalog/beans/new')}
+          className="fixed bottom-24 right-4 bg-foreground text-background rounded-full px-4 py-2.5 flex items-center gap-2 text-sm font-semibold shadow-lg"
+        >
+          <Plus className="size-4" />
+          원두 등록
+        </button>
+      )}
     </div>
   )
 }
